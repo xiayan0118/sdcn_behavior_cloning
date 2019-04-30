@@ -19,14 +19,13 @@ from sklearn.model_selection import train_test_split
 # print(history_object.history.keys())
 # plt.plot(history_object.history['loss'])
 # plt.plot(history_object.history['val_loss'])
-# current_path = None
 # image = ndimage.imread(current_path)
 
 # Hyperparameters
 BATCH_SIZE = 32
 # Todo: change ROW to 80 after trimming
 ROW, COL, CH = 160, 320, 3
-NUM_EPOCHS = 1
+NUM_EPOCHS = 5
 
 def load_images():
   samples = []
@@ -63,8 +62,8 @@ def generator(samples, batch_size=32):
 
 def build_model():
   model = Sequential()
-  model.add(Lambda(lambda x: x/127.5 - 1., input_shape=(ROW, COL, CH), output_shape=(ROW, COL, CH)))
-  model.add(Flatten(input_shape=(ROW, COL, CH)))
+  model.add(Lambda(lambda x: x/255.0 - 0.5, input_shape=(ROW, COL, CH)))
+  model.add(Flatten())
   model.add(Dense(1))
   return model
 
