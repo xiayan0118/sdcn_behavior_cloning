@@ -10,6 +10,9 @@ from keras.models import Sequential
 from scipy import ndimage
 from sklearn.model_selection import train_test_split
 
+from keras.layers.convolutional import Conv2D
+from keras.layers.pooling import MaxPool2D
+
 # Use generator and add comments
 # Train/validation/test
 # Adam
@@ -63,7 +66,13 @@ def generator(samples, batch_size=32):
 def build_model():
   model = Sequential()
   model.add(Lambda(lambda x: x/255.0 - 0.5, input_shape=(ROW, COL, CH)))
+  model.add(Conv2D(6, (5, 5), activation='relu'))
+  model.add(MaxPool2D())
+  model.add(Conv2D(6, (5, 5), activation='relu'))
+  model.add(MaxPool2D())
   model.add(Flatten())
+  model.add(Dense(120))
+  model.add(Dense(84))
   model.add(Dense(1))
   return model
 
@@ -84,7 +93,9 @@ if __name__ == "__main__":
                       epochs=NUM_EPOCHS,
                       verbose=1)
 
+  # Save model
   model.save("model.h5")
 
+  # Save training/validation losses
   with open('history.p', 'wb') as f:
     pickle.dump(history_object.history, f)
