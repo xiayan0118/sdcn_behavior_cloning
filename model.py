@@ -5,7 +5,7 @@ from random import shuffle
 
 import numpy as np
 import sklearn
-from keras.layers import Flatten, Dense, Lambda
+from keras.layers import Flatten, Dense, Lambda, Cropping2D
 from keras.models import Sequential
 from scipy import ndimage
 from sklearn.model_selection import train_test_split
@@ -18,17 +18,12 @@ from keras.layers.pooling import MaxPool2D
 # Adam
 # Shuffle before splitting
 # http://alexlenail.me/NN-SVG/LeNet.html
-# history_object = model.fit_generator(..., verbose=1)
-# print(history_object.history.keys())
-# plt.plot(history_object.history['loss'])
-# plt.plot(history_object.history['val_loss'])
-# image = ndimage.imread(current_path)
 
 # Hyperparameters
-BATCH_SIZE = 32
-# Todo: change ROW to 80 after trimming
+BATCH_SIZE = 10
 ROW, COL, CH = 160, 320, 3
 NUM_EPOCHS = 5
+CORRECTIONS = [0.0, 0.2, -0.2]
 
 def load_images():
   samples = []
@@ -52,27 +47,40 @@ def generator(samples, batch_size=32):
       imgs = []
       angles = []
       for batch_sample in batch_samples:
-        center_name = './data/' + batch_sample[0]
-        # Todo: add left and right side images
-        center_img = ndimage.imread(center_name)
-        cener_angle = float(batch_sample[3])
-        imgs.append(center_img)
-        angles.append(cener_angle)
+        for i in range(3):
+          img_name = './data/' + batch_sample[i].strip()
+          img = ndimage.imread(img_name)
+          angle = float(batch_sample[3]) + CORRECTIONS[i]
+          imgs.append(img)
+          angles.append(angle)
 
-      X_train = np.array(imgs)
-      y_train = np.array(angles)
-      yield sklearn.utils.shuffle(X_train, y_train)
+          flipped_img = np.fliplr(img)
+          flipped_angle = -angle
+          imgs.append(flipped_img)
+          angles.append(flipped_angle)
+
+      X = np.array(imgs)
+      y= np.array(angles)
+      yield sklearn.utils.shuffle(X, y)
 
 def build_model():
   model = Sequential()
   model.add(Lambda(lambda x: x/255.0 - 0.5, input_shape=(ROW, COL, CH)))
-  model.add(Conv2D(6, (5, 5), activation='relu'))
-  model.add(MaxPool2D())
-  model.add(Conv2D(6, (5, 5), activation='relu'))
-  model.add(MaxPool2D())
+  model.add(Cropping2D(cropping=((70, 25), (0, 0))))
+  model.add(Conv2D(24, (5, 5), strides=(2, 2), activation='relu'))
+  # model.add(MaxPool2D())
+  model.add(Conv2D(36, (5, 5), strides=(2, 2), activation='relu'))
+  # model.add(MaxPool2D())
+  model.add(Conv2D(48, (5, 5), strides=(2, 2), activation='relu'))
+  # model.add(MaxPool2D())
+  model.add(Conv2D(64, (3, 3), activation='relu'))
+  # model.add(MaxPool2D())
+  model.add(Conv2D(64, (3, 3), activation='relu'))
+  # model.add(MaxPool2D())
   model.add(Flatten())
-  model.add(Dense(120))
-  model.add(Dense(84))
+  model.add(Dense(100))
+  model.add(Dense(50))
+  model.add(Dense(10))
   model.add(Dense(1))
   return model
 
