@@ -5,7 +5,8 @@ from random import shuffle
 
 import numpy as np
 import sklearn
-from keras.layers import Flatten, Dense, Lambda, Cropping2D
+from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.layers import Flatten, Dense, Lambda, Cropping2D, Dropout
 from keras.models import Sequential
 from scipy import ndimage
 from sklearn.model_selection import train_test_split
@@ -22,7 +23,7 @@ from keras.layers.pooling import MaxPool2D
 # Hyperparameters
 BATCH_SIZE = 10
 ROW, COL, CH = 160, 320, 3
-NUM_EPOCHS = 5
+NUM_EPOCHS = 50
 CORRECTIONS = [0.0, 0.2, -0.2]
 
 def load_images():
@@ -68,17 +69,19 @@ def build_model():
   model.add(Lambda(lambda x: x/255.0 - 0.5, input_shape=(ROW, COL, CH)))
   model.add(Cropping2D(cropping=((70, 25), (0, 0))))
   model.add(Conv2D(24, (5, 5), strides=(2, 2), activation='relu'))
-  # model.add(MaxPool2D())
+
   model.add(Conv2D(36, (5, 5), strides=(2, 2), activation='relu'))
-  # model.add(MaxPool2D())
+# model.add(MaxPool2D())
   model.add(Conv2D(48, (5, 5), strides=(2, 2), activation='relu'))
   # model.add(MaxPool2D())
   model.add(Conv2D(64, (3, 3), activation='relu'))
   # model.add(MaxPool2D())
-  model.add(Conv2D(64, (3, 3), activation='relu'))
+  model.add(Conv2D(64, (3, 3), activation='relu'))  
   # model.add(MaxPool2D())
   model.add(Flatten())
+  model.add(Dropout(0.7))
   model.add(Dense(100))
+#   model.add(Dropout(0.7))    
   model.add(Dense(50))
   model.add(Dense(10))
   model.add(Dense(1))
@@ -90,20 +93,26 @@ if __name__ == "__main__":
   train_gen = generator(train_samples, BATCH_SIZE)
   val_gen = generator(val_samples, BATCH_SIZE)
 
-  next(val_gen)
-
   model = build_model()
   model.compile(loss='mse', optimizer='adam')
+
+  early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=0)
+  checkpoint = ModelCheckpoint('model-{epoch:03d}-{val_loss:03f}.h5',
+                               monitor='val_loss',
+                               verbose=1,
+                               save_best_only=True)
+
   history_object= model.fit_generator(generator=train_gen,
                       steps_per_epoch=ceil(len(train_samples)/BATCH_SIZE),
                       validation_data=val_gen,
                       validation_steps=ceil(len(val_samples)/BATCH_SIZE),
                       epochs=NUM_EPOCHS,
+                      callbacks=[early_stopping, checkpoint],
                       verbose=1)
 
   # Save model
-  model.save("model.h5")
+  model.save("model_es.h5")
 
   # Save training/validation losses
-  with open('history.p', 'wb') as f:
+  with open('history_es.p', 'wb') as f:
     pickle.dump(history_object.history, f)
