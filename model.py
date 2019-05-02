@@ -5,7 +5,7 @@ from random import shuffle
 
 import numpy as np
 import sklearn
-from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras.layers import Flatten, Dense, Lambda, Cropping2D, Dropout
 from keras.models import Sequential
 from scipy import ndimage
@@ -21,7 +21,7 @@ from keras.layers.pooling import MaxPool2D
 # http://alexlenail.me/NN-SVG/LeNet.html
 
 # Hyperparameters
-BATCH_SIZE = 10
+BATCH_SIZE = 85
 ROW, COL, CH = 160, 320, 3
 NUM_EPOCHS = 50
 CORRECTIONS = [0.0, 0.2, -0.2]
@@ -101,18 +101,20 @@ if __name__ == "__main__":
                                monitor='val_loss',
                                verbose=1,
                                save_best_only=True)
+  reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
+                                patience=2, min_lr=0.000001, verbose=1)
 
   history_object= model.fit_generator(generator=train_gen,
                       steps_per_epoch=ceil(len(train_samples)/BATCH_SIZE),
                       validation_data=val_gen,
                       validation_steps=ceil(len(val_samples)/BATCH_SIZE),
                       epochs=NUM_EPOCHS,
-                      callbacks=[early_stopping, checkpoint],
+                      callbacks=[early_stopping, checkpoint, reduce_lr],
                       verbose=1)
 
   # Save model
-  model.save("model_es.h5")
+  model.save("model_bs.h5")
 
   # Save training/validation losses
-  with open('history_es.p', 'wb') as f:
+  with open('history_bs.p', 'wb') as f:
     pickle.dump(history_object.history, f)
